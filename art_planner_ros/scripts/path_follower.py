@@ -42,7 +42,8 @@ def getQuatFromYaw(yaw):
 class PathFollower:
     def __init__(self):
         self.listener = tf.TransformListener()
-        self.pub_twist = rospy.Publisher('/path_planning_and_following/twist', TwistStamped, queue_size=1)
+        # self.pub_twist = rospy.Publisher('/path_planning_and_following/twist', TwistStamped, queue_size=1)
+        self.pub_twist = rospy.Publisher('/local_guidance_path_follower/twist', TwistStamped, queue_size=1)
         self.pub_path = rospy.Publisher('/art_planner/followed_path', Path, queue_size=1, latch=True)
         self.sub = rospy.Subscriber('/art_planner/path', Path, self.pathCallback)
         self.current_pose = None
@@ -50,8 +51,10 @@ class PathFollower:
         self.fixed_frame = None
         self.path = None
         self.path_ros = None
-        self.gain_pid_pos = [2, 0.0, 0.0]
-        self.gain_pid_ang = [5, 0.0, 0.0]
+        self.gain_pid_pos = [1.5, 0.0, 0.0]
+        self.gain_pid_ang = [0.75, 0.0, 0.0]
+
+        self.spd_max = [2.0, 0.7, 1.25]
         self.i = [0, 0, 0]
 
 
@@ -201,13 +204,11 @@ class PathFollower:
             lat_rate = dlat * self.gain_pid_pos[0] + self.i[1] * self.gain_pid_pos[1]
             yaw_rate = dyaw * self.gain_pid_ang[0] + self.i[2] * self.gain_pid_ang[1]
 
-            msg.twist.linear.x = lon_rate
-            msg.twist.linear.y = lat_rate
-            msg.twist.angular.z = yaw_rate
+            msg.twist.linear.x = np.clip(lon_rate, -self.spd_max[0], self.spd_max[0])
+            msg.twist.linear.y = np.clip(lat_rate, -self.spd_max[1], self.spd_max[1])
+            msg.twist.angular.z = np.clip(yaw_rate, -self.spd_max[2], self.spd_max[2])
 
             self.pub_twist.publish(msg)
-
-
 
 
 
